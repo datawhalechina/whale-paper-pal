@@ -1,0 +1,19 @@
+{
+  "extends": [
+    "next/core-web-vitals",
+    "plugin:@typescript-eslint/recommended",
+    "prettier"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "rules": {
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-explicit-any": "warn",
+    "prefer-const": "error",
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "react/no-unescaped-entities": "warn",
+    "@next/next/no-img-element": "warn",
+    "react-hooks/exhaustive-deps": "warn"
+  },
+  "ignorePatterns": ["electron/*.js", "dist/", ".next/"]
+}
