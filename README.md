@@ -1,102 +1,220 @@
-# Paper Pal：面向 AI 研究者的桌面化论文智能阅读与问答系统 🐾
+# WhalePaper
 
-随着人工智能与信息检索领域的快速发展，研究者每天需要面对大量新发布的论文。如何**高效获取高质量论文、快速理解论文内容、并进行可追溯的深度阅读与问答**，已经成为科研工作中的核心痛点。
+<p align="right"><a href="README_EN.md">English version</a></p>
 
-**Paper Pal** 是一个集 *论文自动抓取、智能筛选、PDF 全文分析与 RAG 问答* 于一体的桌面级论文阅读伴侣系统。项目以 **ArXiv 最新 AI 论文** 为主要数据源，结合 **大语言模型（LLM）** 与 **信息检索技术**，实现从论文发现、质量评估到全文级交互式阅读的完整闭环。
+<p align="center">
+  <img src="assets/readme/promo-overview.png" alt="WhalePaper 桌面科研工作空间" width="1100">
+</p>
 
-在工程实现上，Paper Pal 采用 **Next.js + Electron + FastAPI** 的跨平台架构，并引入 **桌面精灵（Desktop Agent）** 的交互形式，使论文追踪与阅读过程更加轻量、持续且友好；在方法设计上，项目重点探索了：
+<p align="center"><strong>科研阅读和写作，别再来回切窗口。</strong></p>
 
-- LLM 驱动的论文相关性与价值评分机制  
-- 基于 PDF 全文的 RAG（Retrieval-Augmented Generation）问答  
-- 面向真实科研场景的可靠性标注与智能降级策略  
+<p align="center">
+  一个本地优先的桌面科研工作空间，把论文库、PDF 阅读、AI 助手、论文发现和 LaTeX 写作放在一起。
+</p>
 
-本项目既是一个**可直接使用的科研辅助工具**，也是一个**完整可复现的工程与方法实践案例**，适合对 **信息检索、LLM 应用、RAG 系统、科研工具构建** 感兴趣的学习者与研究者深入学习和二次开发。
+## 为什么做 WhalePaper
 
+一篇论文先在浏览器里找到，下载后在 PDF 阅读器里看；遇到问题，切到聊天窗口提问；有了笔记，再打开另一个工具保存；真正开始写作，又回到 LaTeX 编辑器。研究内容没有变，窗口却换了一遍又一遍。
 
-## 项目受众
+WhalePaper 想解决的就是这件事：让论文、问题、批注和写作处在同一条线上。你可以从一篇 PDF 开始，读到哪里问到哪里，把重要内容留下来，然后继续在自己的论文里使用这些思考。
 
-本项目主要面向以下人群：
+## 主要能力
 
-### 🎓 AI / 信息检索 / NLP 方向研究者
+- **论文库**：导入本地 PDF，按标签、评分、收藏和阅读进度整理自己的研究资料。
+- **论文发现**：搜索标题、作者和摘要，浏览最新、热门和推荐论文，再将它们加入论文库。
+- **PDF 阅读**：通过缩略图、目录、页码和全文搜索定位内容，支持高亮、批注、引用和导出；阅读界面的布局与交互设计受到 Moonlight 的启发。
+- **AI 助手**：选中段落、公式、图像或表格，直接进行解释、翻译、提问和讨论。
+- **LaTeX 写作**：打开本地项目，多标签编辑，查看编译日志和 PDF 预览。
+- **Agent 修订**：让 Agent 提出具体修改，逐条查看、接受或拒绝，不会直接覆盖你的文稿。
+- **模型接口设置**：连接本地、云端或自定义 OpenAI-compatible 服务，按功能选择模型。
+- **本地 Runtime**：管理 Claude Code 与 ChatGPT 内置 Codex，支持直连、第三方能力和会话交接。
+- **桌面精灵**：用一个轻量的小窗口快速回到 WhalePaper，提供置顶、提醒和语音控制。
 
-- 希望高效跟踪最新 ArXiv 论文  
-- 需要快速判断论文价值、抓住核心贡献  
-- 希望通过自然语言对话方式深入理解 PDF 全文内容  
+## 使用演示
 
-**你将获得：**
+### 论文库
 
-- 一个可持续运行的论文追踪与阅读系统  
-- 基于全文的高可靠性问答体验（含来源标注）  
-- 面向真实科研场景的 RAG 系统实践参考  
+<p align="center">
+  <img src="assets/readme/promo-library.png" alt="WhalePaper 论文库" width="860">
+</p>
 
----
+把本地 PDF 拖进来，论文、阅读进度和批注就有了自己的位置。文件仍然保留在你选择的本地路径。
 
-### 👨‍💻 对 LLM 应用与 RAG 系统感兴趣的工程师
+### 论文发现
 
-- 想了解 LLM 在真实复杂系统中的落地方式  
-- 希望学习 PDF 处理、文本检索与问答系统的工程实现  
-- 对 Electron + Web + Python 的系统架构感兴趣  
+<p align="center">
+  <img src="assets/readme/promo-discovery.png" alt="WhalePaper 论文发现" width="860">
+</p>
 
-**你将获得：**
+搜索标题、作者或摘要，先看清楚论文值不值得读，再收进自己的研究库。
 
-- 一个完整、模块化的 LLM 应用工程范例  
-- 可复用的 PDF RAG、评分与降级设计思路  
-- 桌面级 AI Agent 的实现经验  
+### PDF 阅读与 AI 助手
 
----
+<p align="center">
+  <img src="assets/readme/promo-reader-ai.png" alt="WhalePaper PDF 阅读与 AI 助手" width="860">
+</p>
 
-### 📚 高年级学生 / 研究生
+选中一句话就能开始提问，解释、翻译、引用和批注都留在当前阅读上下文里。AI 请求只携带当前功能需要的文本、选区或图像，不会默认上传整份 PDF。
 
-- 具备基础 Python / JavaScript 编程能力  
-- 对 AI 论文阅读与科研效率工具感兴趣  
+### 论文写作与 Agent 修订
 
-**基础要求：**
+<p align="center">
+  <img src="assets/readme/promo-writer-agent.png" alt="WhalePaper 论文写作与 Agent 修订" width="860">
+</p>
 
-- 了解 Python 与基本 Web 技术（HTML / JS）  
-- 对 LLM 和信息检索有基础认知（非必须深入）  
+在 LaTeX 编辑器里写作，同时看编译结果和 Agent 建议。每条修订都可以单独审阅，决定是否放进论文。
 
----
+### 模型接口设置
 
-## 目录
-*这里写你的项目目录，已完成的部分用添加上跳转链接*
-- [第1章](https://github.com/datawhalechina/repo-template/blob/main/docs/chapter1/chapter1.md)
-- [第2章](https://github.com/datawhalechina/repo-template/blob/main/docs/chapter2)
-  - [2.1 我是2.1的标题](https://github.com/datawhalechina/repo-template/blob/main/docs/chapter2/chapter2_1.md)
-  - [2.2 我是2.2的标题](https://github.com/datawhalechina/repo-template/blob/main/docs/chapter2/chapter2_2.md)
-- [第3章](https://github.com/datawhalechina/repo-template/blob/main/docs/chapter3)
-  - [3.1 我是3.1的标题](https://github.com/datawhalechina/repo-template/blob/main/docs/chapter3/chapter3_1)
-    - [3.1.1 我是3.1.1的标题](https://github.com/datawhalechina/repo-template/blob/main/docs/chapter3/chapter3_1/chapter3_1_1.md)
-    - [3.1.2 我是3.1.2的标题](https://github.com/datawhalechina/repo-template/blob/main/docs/chapter3/chapter3_1/chapter3_1_2.md)
-  - 3.2 我是3.2的标题
-- 第4章
-  - 4.1 我是4.1的标题
-  - 4.2 我是4.2的标题
+<p align="center">
+  <img src="assets/readme/promo-model-settings.png" alt="WhalePaper 模型接口设置" width="860">
+</p>
 
-## 贡献者名单
+你可以接入本地模型、云端服务或自己的 OpenAI-compatible 接口，并为不同功能选择合适的模型。接口地址和密钥按本机保存。
 
-| 姓名 | 职责 | 简介 |
-| :----| :---- | :---- |
-| 芙蕖 | 项目负责人 | Datawhale成员 |
-| 王翔 | 贡献者 | Datawhale成员 |
-| 长琴 | 贡献者 | Datawhale成员 |
+### 本地 Agent Runtime
 
-*注：表头可自定义，但必须在名单中标明项目负责人*
+<p align="center">
+  <img src="assets/readme/promo-local-agent.png" alt="WhalePaper 本地 Agent Runtime" width="860">
+</p>
+
+在设置里管理 Claude Code 和 ChatGPT 内置 Codex，跟随 Runtime 获取可用模型。退出应用或切换任务时，活动 Runtime 会被停止，避免后台进程一直运行。
+
+### 桌面精灵
+
+<p align="center">
+  <img src="assets/readme/promo-desktop-pet.png" alt="WhalePaper 桌面精灵" width="860">
+</p>
+
+它平时安静地待在桌面边缘，需要时帮你快速回到工作区，也可以控制提醒、置顶和语音播放。
+
+## 本地优先
+
+- PDF 和 LaTeX 项目保留在你选择的本地路径。
+- 论文库、阅读进度、批注、写作版本、Agent 会话和长期记忆保存在本机 SQLite。
+- 不使用 AI 时，基础阅读、搜索和批注不需要上传文件。
+- 使用 AI 时，只发送当前功能所需的页面文本、选区或明确框选的图像。
+- 应用退出或切换任务时会停止活动的 Agent 进程，启动时会回收异常退出留下的运行记录。
+
+## 开始使用
+
+### 环境要求
+
+- Node.js 20+
+- Rust stable
+- macOS 构建需要 Xcode Command Line Tools
+
+### 从源码运行桌面版
+
+```bash
+npm ci
+npm run desktop:dev
+```
+
+### 打包应用
+
+```bash
+npm run desktop:build
+```
+
+## 贡献者
+
+WhalePaper 离不开每一位参与设计、开发和完善项目的人。
+
+| 姓名 | 角色 | 简介 |
+| --- | --- | --- |
+| 芙蕖 | 项目负责人 | Datawhale 成员 |
+| 王翔 | 贡献者 | Datawhale 成员 |
+| 长琴 | 贡献者 | Datawhale 成员 |
+
+也感谢所有提交 Issue、测试新版本、改进文档和提出建议的朋友。新的贡献会继续记录在这里。
 
 ## 参与贡献
 
-- 如果你发现了一些问题，可以提Issue进行反馈，如果提完没有人回复你可以联系[保姆团队](https://github.com/datawhalechina/DOPMC/blob/main/OP.md)的同学进行反馈跟进~
-- 如果你想参与贡献本项目，可以提Pull request，如果提完没有人回复你可以联系[保姆团队](https://github.com/datawhalechina/DOPMC/blob/main/OP.md)的同学进行反馈跟进~
-- 如果你对 Datawhale 很感兴趣并想要发起一个新的项目，请按照[Datawhale开源项目指南](https://github.com/datawhalechina/DOPMC/blob/main/GUIDE.md)进行操作即可~
+无论是修正一个错别字、复现一个问题，还是实现一项新功能，都欢迎参与。
 
-## 关注我们
+1. 在 [Issues](../../issues) 中搜索是否已有相同问题；如果没有，请新建 Issue，并尽量附上系统版本、复现步骤和截图。
+2. 准备修改代码时，先在 Issue 中说明思路，避免重复工作或与现有方向冲突。
+3. Fork 仓库并创建独立分支，让一次 Pull Request 只解决一个清晰的问题。
+4. 提交前运行与改动相关的检查；完整检查命令可以在下方“开发者信息”中找到。
+5. 发起 [Pull Request](../../pulls)，说明改了什么、为什么这样改，以及如何验证。
 
-<div align=center>
-<p>扫描下方二维码关注公众号：Datawhale</p>
-<img src="https://raw.githubusercontent.com/datawhalechina/pumpkin-book/master/res/qrcode.jpeg" width = "180" height = "180">
-</div>
+除了代码，我们同样欢迎界面设计、使用反馈、文档、翻译和测试方面的贡献。如果 Issue 或 Pull Request 长时间没有回复，可以联系 [Datawhale 开源项目维护团队](https://github.com/datawhalechina/DOPMC/blob/main/OP.md) 协助跟进。
 
-## LICENSE
+## 联系我们
 
-<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="知识共享许可协议" style="border-width:0" src="https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-lightgrey" /></a><br />本作品采用<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">知识共享署名-非商业性使用-相同方式共享 4.0 国际许可协议</a>进行许可。
+- 遇到 Bug 或有功能建议，请优先提交 [Issue](../../issues)。公开讨论能让后来遇到相同问题的人也找到答案。
+- 希望直接参与开发，可以发起 [Pull Request](../../pulls)，或先在 Issue 中介绍你的想法。
+- 想了解 Datawhale 的其他开源项目，或希望发起新项目，可以阅读 [Datawhale 开源项目指南](https://github.com/datawhalechina/DOPMC/blob/main/GUIDE.md)。
 
-*注：默认使用CC 4.0协议，也可根据自身项目情况选用其他协议*
+欢迎加入 WhalePaper 工具技术讨论与内测群，交流使用体验、功能想法和版本反馈。二维码有效期有限，失效后会在项目中更新。
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <strong>加入 WhalePaper 讨论群</strong><br>
+      <sub>技术讨论、内测反馈与版本交流</sub><br><br>
+      <img src="assets/readme/community-qr.jpg" alt="WhalePaper 工具技术讨论与内测群二维码" width="240">
+    </td>
+    <td align="center" width="50%">
+      <strong>关注 Datawhale</strong><br>
+      <sub>扫描二维码获取开源项目动态</sub><br><br>
+      <img src="https://raw.githubusercontent.com/datawhalechina/pumpkin-book/master/res/qrcode.jpeg" alt="Datawhale 公众号二维码" width="180" height="180">
+    </td>
+  </tr>
+</table>
+
+## 开发者信息
+
+<details>
+<summary>构建检查、项目结构与许可证</summary>
+
+### 本地发布前检查
+
+项目不依赖 GitHub Actions。发布前可以在本机运行：
+
+```bash
+npm run check:repository
+npm run build
+npm run verify:structured-json
+npm run verify:quiz
+npm run verify:pdf-export
+cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+cargo test --manifest-path src-tauri/Cargo.toml
+```
+
+如需检查依赖安全公告，可以额外运行：
+
+```bash
+npm audit --audit-level=high
+```
+
+### 项目结构
+
+```text
+src/                    React 界面、阅读功能和本地服务适配器
+src/features/writer/    LaTeX 写作工作区、Agent 修订和版本服务
+src-tauri/src/          Tauri 命令、SQLite、Runtime 与 LaTeX 管理
+src-tauri/resources/    内置模型、会议 LaTeX 工具包和许可文件
+public/                 桌面精灵等静态资源
+assets/readme/          README 宣传图
+scripts/                本地检查和发布回归脚本
+```
+
+### 技术栈
+
+- React 19、TypeScript、Vite
+- PDF.js / react-pdf、PDF-Lib、KaTeX
+- CodeMirror LaTeX 编辑器
+- Tauri 2、Rust、SQLite
+- 本地或云端 OpenAI-compatible 模型服务
+- Claude Code 与 ChatGPT 内置 Codex Runtime（可选）
+
+### License
+
+WhalePaper 自有代码采用 MIT License。PDF.js 采用 Apache-2.0。内置 DocLayout-YOLO 模型声明为 AGPL-3.0，完整许可文本位于 `src-tauri/resources/models/LICENSE.DocLayout-YOLO.txt`。会议 LaTeX 工具包和其他资源保留各自的上游版权与许可条款；公开发布二进制安装包前，请确认相应的再分发义务。桌面精灵资源来自 Agent Pet 项目并采用 MIT License。
+
+</details>
+
+如果 WhalePaper 对你的科研工作有帮助，欢迎点一个 Star，让更多需要论文阅读和写作工作台的人找到它。

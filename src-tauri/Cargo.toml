@@ -1,0 +1,40 @@
+[package]
+name = "whale-paper"
+version = "0.1.0"
+description = "WhalePaper local-first research reading and writing workspace"
+authors = ["WhalePaper contributors"]
+edition = "2021"
+
+[lib]
+name = "whale_paper_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+flate2 = "1"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+regex = "1"
+rusqlite = { version = "0.37", features = ["bundled"] }
+sha2 = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+reqwest = { version = "0.13", features = ["json"] }
+tar = "0.4"
+tauri = { version = "2", features = ["macos-private-api"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-opener = "2"
+wait-timeout = "0.2"
+xz2 = "0.1"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+ort = { version = "=2.0.0-rc.13", features = ["coreml"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+ort = { version = "=2.0.0-rc.13" }
+
+[target.'cfg(not(any(target_os = "macos", target_os = "windows")))'.dependencies]
+ort = { version = "=2.0.0-rc.13" }

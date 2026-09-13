@@ -1,0 +1,12 @@
+* text=auto eol=lf
+
+# Keep bundled third-party resources visible in GitHub without counting them
+# as the project's own source in language statistics.
+src-tauri/resources/conference-tex/** linguist-vendored
+src-tauri/resources/models/** linguist-vendored
+
+*.png binary
+*.webp binary
+*.onnx binary
+*.icns binary
+*.ico binary
