@@ -1614,8 +1614,10 @@ fn compile_project(app: AppHandle, request: CompileRequest) -> Result<CompileRes
 }
 
 #[tauri::command]
-pub fn get_latex_runtime_status(app: AppHandle) -> LatexRuntimeStatus {
-    runtime_status(Some(&app))
+pub async fn get_latex_runtime_status(app: AppHandle) -> Result<LatexRuntimeStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || runtime_status(Some(&app)))
+        .await
+        .map_err(|error| format!("检测 LaTeX 环境失败：{error}"))
 }
 
 #[tauri::command]
@@ -1732,12 +1734,16 @@ pub async fn install_managed_latex_runtime(app: AppHandle) -> Result<LatexRuntim
 }
 
 #[tauri::command]
-pub fn uninstall_managed_latex_runtime(app: AppHandle) -> Result<LatexRuntimeStatus, String> {
-    let root = managed_runtime_root(&app)?;
-    if root.exists() {
-        fs::remove_dir_all(root).map_err(|error| format!("无法移除托管 TeX 环境：{error}"))?;
-    }
-    Ok(runtime_status(Some(&app)))
+pub async fn uninstall_managed_latex_runtime(app: AppHandle) -> Result<LatexRuntimeStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = managed_runtime_root(&app)?;
+        if root.exists() {
+            fs::remove_dir_all(root).map_err(|error| format!("无法移除托管 TeX 环境：{error}"))?;
+        }
+        Ok(runtime_status(Some(&app)))
+    })
+    .await
+    .map_err(|error| format!("卸载托管 TeX 环境失败：{error}"))?
 }
 
 #[tauri::command]

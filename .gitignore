@@ -2,6 +2,7 @@ node_modules/
 dist/
 src-tauri/target/
 .playwright-cli/
+.moira-uploads/
 output/
 docs/
 models/
@@ -14,6 +15,7 @@ tmp/
 .DS_Store
 *.log
 *.tsbuildinfo
+public/__test_*.pdf
 .env
 .env.local
 .env.*.local

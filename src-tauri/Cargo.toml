@@ -34,7 +34,7 @@ xz2 = "0.1"
 ort = { version = "=2.0.0-rc.13", features = ["coreml"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-ort = { version = "=2.0.0-rc.13" }
+ort = { version = "=2.0.0-rc.13", default-features = false, features = ["std", "ndarray", "tracing", "api-27", "load-dynamic"] }
 
 [target.'cfg(not(any(target_os = "macos", target_os = "windows")))'.dependencies]
 ort = { version = "=2.0.0-rc.13" }
