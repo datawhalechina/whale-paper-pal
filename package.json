@@ -18,7 +18,8 @@
     "desktop:build": "tauri build",
     "verify:structured-json": "node --experimental-strip-types scripts/verify-structured-json.mts",
     "verify:pdf-export": "node --experimental-strip-types scripts/verify-annotated-export.mjs",
-    "verify:quiz": "node --experimental-strip-types scripts/verify-quiz.mts"
+    "verify:quiz": "node --experimental-strip-types scripts/verify-quiz.mts",
+    "verify:page-translation": "node scripts/verify-page-translation.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.4",
@@ -46,7 +47,7 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "^5.1.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "esbuild": "^0.28.1",
     "typescript": "^7.0.2",
     "vite": "^8.2.0"

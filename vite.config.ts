@@ -10,7 +10,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/moonlight-api": {
-        target: "https://www.themoonlight.io",
+        target: "https://api.themoonlight.io",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/moonlight-api/, "/api"),
       },
@@ -23,6 +23,11 @@ export default defineConfig({
         target: "https://huggingface.co",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/huggingface-api/, "/api"),
+      },
+      "/arxiv-api": {
+        target: "https://export.arxiv.org",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/arxiv-api/, "/api/query"),
       },
       "/openreview-api": {
         target: "https://api2.openreview.net",

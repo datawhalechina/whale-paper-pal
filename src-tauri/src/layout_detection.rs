@@ -167,6 +167,20 @@ fn detect(model_path: &Path, bytes: &[u8]) -> Result<Vec<PdfLayoutBox>, String> 
         .lock()
         .map_err(|_| "本地版面模型状态不可用".to_string())?;
     if guard.is_none() {
+        // Windows also ships an unrelated onnxruntime.dll. Load our bundled
+        // runtime by absolute path instead of relying on the DLL search order.
+        #[cfg(target_os = "windows")]
+        {
+            let executable =
+                std::env::current_exe().map_err(|error| format!("无法定位应用目录: {error}"))?;
+            let runtime = executable
+                .parent()
+                .ok_or_else(|| "无法定位应用目录".to_string())?
+                .join("onnxruntime.dll");
+            ort::init_from(&runtime)
+                .map_err(|error| format!("无法加载 ONNX Runtime ({}): {error}", runtime.display()))?
+                .commit();
+        }
         let mut builder = Session::builder()
             .map_err(|error| format!("无法初始化 ONNX Runtime: {error}"))?
             .with_intra_threads(4)

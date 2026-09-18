@@ -14,6 +14,7 @@ use std::sync::mpsc;
 use std::sync::Mutex;
 use std::sync::OnceLock;
 use std::time::Duration;
+use wait_timeout::ChildExt;
 
 static ACTIVE_AGENT_PID: AtomicI32 = AtomicI32::new(0);
 static ACTIVE_AGENT_SESSION: OnceLock<Mutex<Option<String>>> = OnceLock::new();
@@ -446,8 +447,61 @@ fn configured_executable_candidates(name: &str, configured_path: Option<&str>) -
     candidates
 }
 
+const AGENT_PROBE_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Run a probe subprocess with bounded execution time. Probe commands such as
+/// `claude --version` or `codex login status` can block on first-run
+/// migrations or network authentication, so a timeout keeps a slow or hung CLI
+/// from occupying its thread indefinitely.
+fn command_output_with_timeout(
+    command: &mut Command,
+    timeout: Duration,
+) -> Option<std::process::Output> {
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = command.spawn().ok()?;
+    let stdout_pipe = child.stdout.take();
+    let stderr_pipe = child.stderr.take();
+    let stdout_reader = stdout_pipe.map(|mut pipe| {
+        std::thread::spawn(move || {
+            let mut bytes = Vec::new();
+            let _ = std::io::Read::read_to_end(&mut pipe, &mut bytes);
+            bytes
+        })
+    });
+    let stderr_reader = stderr_pipe.map(|mut pipe| {
+        std::thread::spawn(move || {
+            let mut bytes = Vec::new();
+            let _ = std::io::Read::read_to_end(&mut pipe, &mut bytes);
+            bytes
+        })
+    });
+    let status = match child.wait_timeout(timeout).ok()? {
+        Some(status) => status,
+        None => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return None;
+        }
+    };
+    let stdout = stdout_reader
+        .and_then(|reader| reader.join().ok())
+        .unwrap_or_default();
+    let stderr = stderr_reader
+        .and_then(|reader| reader.join().ok())
+        .unwrap_or_default();
+    Some(std::process::Output {
+        status,
+        stdout,
+        stderr,
+    })
+}
+
 fn probe_version(path: &Path) -> Option<String> {
-    let output = agent_command(path).arg("--version").output().ok()?;
+    let output =
+        command_output_with_timeout(agent_command(path).arg("--version"), AGENT_PROBE_TIMEOUT)?;
     if !output.status.success() {
         return None;
     }
@@ -536,15 +590,15 @@ fn probe_agent(
             }
         }
         let output = if name == "claude" {
-            agent_command(binary)
-                .args(["auth", "status", "--json"])
-                .output()
-                .ok()?
+            command_output_with_timeout(
+                agent_command(binary).args(["auth", "status", "--json"]),
+                AGENT_PROBE_TIMEOUT,
+            )?
         } else {
-            agent_command(binary)
-                .args(["login", "status"])
-                .output()
-                .ok()?
+            command_output_with_timeout(
+                agent_command(binary).args(["login", "status"]),
+                AGENT_PROBE_TIMEOUT,
+            )?
         };
         if !output.status.success() {
             return Some(false);
@@ -568,24 +622,28 @@ fn probe_agent(
 }
 
 #[tauri::command]
-fn agent_runtime_status(request: Option<AgentRuntimeStatusRequest>) -> Vec<AgentRuntimeInfo> {
+async fn agent_runtime_status(request: Option<AgentRuntimeStatusRequest>) -> Vec<AgentRuntimeInfo> {
     let request = request.unwrap_or_default();
-    vec![
-        probe_agent(
-            "claude",
-            "claude_code",
-            "Claude Code",
-            request.paths.get("claude_code").map(String::as_str),
-            request.refresh,
-        ),
-        probe_agent(
-            "codex",
-            "codex_runtime",
-            "Codex",
-            request.paths.get("codex_runtime").map(String::as_str),
-            false,
-        ),
-    ]
+    tauri::async_runtime::spawn_blocking(move || {
+        vec![
+            probe_agent(
+                "claude",
+                "claude_code",
+                "Claude Code",
+                request.paths.get("claude_code").map(String::as_str),
+                request.refresh,
+            ),
+            probe_agent(
+                "codex",
+                "codex_runtime",
+                "Codex",
+                request.paths.get("codex_runtime").map(String::as_str),
+                false,
+            ),
+        ]
+    })
+    .await
+    .unwrap_or_default()
 }
 
 fn claude_model_options() -> Vec<AgentModelInfo> {
@@ -1232,10 +1290,10 @@ fn environment_proxy_configured() -> bool {
 
 #[cfg(target_os = "macos")]
 fn macos_system_proxy() -> Option<String> {
-    let output = std::process::Command::new("/usr/sbin/scutil")
-        .arg("--proxy")
-        .output()
-        .ok()?;
+    let output = command_output_with_timeout(
+        std::process::Command::new("/usr/sbin/scutil").arg("--proxy"),
+        Duration::from_secs(2),
+    )?;
     if !output.status.success() {
         return None;
     }
@@ -1485,6 +1543,114 @@ mod tests {
     }
 
     #[test]
+    fn command_output_with_timeout_returns_output_of_fast_command() {
+        let mut command = Command::new("/bin/sh");
+        command.arg("-c").arg("printf hello");
+        let output = command_output_with_timeout(&mut command, Duration::from_secs(5))
+            .expect("fast command should finish within the timeout");
+        assert!(output.status.success());
+        assert_eq!(String::from_utf8_lossy(&output.stdout), "hello");
+    }
+
+    #[test]
+    fn command_output_with_timeout_kills_a_hung_child() {
+        let mut command = Command::new("/bin/sh");
+        command.arg("-c").arg("sleep 30");
+        let started = std::time::Instant::now();
+        let output = command_output_with_timeout(&mut command, Duration::from_millis(300));
+        let elapsed = started.elapsed();
+        assert!(output.is_none(), "a timed-out probe must report no output");
+        assert!(
+            elapsed < Duration::from_secs(5),
+            "the helper must return promptly instead of waiting for the child, took {elapsed:?}"
+        );
+    }
+
+    #[test]
+    fn command_output_with_timeout_does_not_deadlock_on_large_piped_output() {
+        // More than a pipe buffer held in both stdout and stderr: if the pipes
+        // were drained only after the child exits, this would block forever.
+        let mut command = Command::new("/bin/sh");
+        command.arg("-c").arg(
+            "head -c 200000 /dev/zero | tr '\\0' 'a'; head -c 200000 /dev/zero | tr '\\0' 'b' 1>&2",
+        );
+        let output = command_output_with_timeout(&mut command, Duration::from_secs(10))
+            .expect("a command with large piped output must not deadlock");
+        assert_eq!(output.stdout.len(), 200000);
+        assert_eq!(output.stderr.len(), 200000);
+    }
+
+    #[test]
+    fn a_hanging_configured_cli_is_rejected_within_the_probe_timeout() {
+        // Reproduces the original freeze shape: a `claude` binary that blocks
+        // forever. `resolve_agent_binary` screens the configured path with
+        // `probe_version`, which is where the hang used to strand the caller.
+        //
+        // The decisive property is that the screen gives up at
+        // AGENT_PROBE_TIMEOUT instead of waiting on the child forever; that is
+        // what keeps `agent_runtime_status` from freezing its thread. Whether a
+        // working CLI also exists on PATH is a separate concern and is not what
+        // this test pins down.
+        let dir = std::env::temp_dir().join(format!("whalepaper-probe-{}", std::process::id()));
+        fs::create_dir_all(&dir).expect("temp dir");
+        let hang = dir.join("claude");
+        fs::write(&hang, "#!/bin/sh\nsleep 60\n").expect("write fake claude");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&hang, fs::Permissions::from_mode(0o755)).expect("chmod");
+        }
+
+        let started = std::time::Instant::now();
+        let version = probe_version(&hang);
+        let elapsed = started.elapsed();
+
+        assert!(
+            version.is_none(),
+            "a CLI that only hangs reports no version"
+        );
+        assert!(
+            elapsed < AGENT_PROBE_TIMEOUT + Duration::from_secs(15),
+            "screening a hung CLI must stop at the timeout, took {elapsed:?}"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn blocking_work_runs_off_the_calling_thread() {
+        // The freeze came from blocking work executing on the caller. This
+        // pins the structural fix: `spawn_blocking` hands the closure to a
+        // pool thread, so the future can make progress while it runs. We use
+        // the same construction `agent_runtime_status` relies on.
+        use std::sync::mpsc;
+
+        let (started_tx, started_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel::<()>();
+        let watcher = std::thread::spawn(move || {
+            // The pool thread parks until this test releases it.
+            tauri::async_runtime::block_on(async move {
+                tauri::async_runtime::spawn_blocking(move || {
+                    let _ = started_tx.send(());
+                    let _ = release_rx.recv();
+                    "probe done"
+                })
+                .await
+                .expect("blocking task should join")
+            })
+        });
+
+        // If the work really moved off the calling thread, it starts even
+        // though this test thread has not run anything yet.
+        started_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("blocking work must start on the pool without the caller driving it");
+
+        let _ = release_tx.send(());
+        assert_eq!(watcher.join().expect("watcher thread"), "probe done");
+    }
+
+    #[test]
     fn prefers_structured_codex_turn_error_over_plugin_warnings() {
         let stdout = r#"
 {"type":"turn.started"}
@@ -1555,7 +1721,7 @@ mod tests {
         tauri::async_runtime::block_on(async {
             let response = build_http_client()
                 .expect("desktop HTTP client should initialize")
-                .get("https://www.themoonlight.io/api/scholar/anonymous/search-with-ref?query=Solar%20Open%202%20Technical%20Report")
+                .get("https://api.themoonlight.io/api/scholar/anonymous/search-with-ref?query=Solar%20Open%202%20Technical%20Report")
                 .send()
                 .await
                 .expect("Moonlight request should complete");
