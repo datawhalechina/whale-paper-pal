@@ -178,6 +178,7 @@ npm run check:repository
 npm run build
 npm run verify:structured-json
 npm run verify:quiz
+npm run verify:writer-save
 npm run verify:pdf-export
 cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings

@@ -787,6 +787,7 @@ function WhalePaperApp() {
     return (
       <>
         <WritingWorkspace
+          key={writerLocation.rootPath}
           rootPath={writerLocation.rootPath}
           initialFile={writerLocation.initialFile}
           aiSettings={aiSettings}
