@@ -110,6 +110,12 @@ export function WriterAgentPanel(props: WriterAgentPanelProps) {
   const [sessionId, setSessionId] = useState(() => storedSession(props.rootPath));
   const [memories, setMemories] = useState<UserMemory[]>([]);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const turnRef = useRef(0);
+  const invalidateTurn = () => {
+    turnRef.current += 1;
+    setBusy(false);
+    setActivity("reply");
+  };
 
   const refreshRuntimeStatus = () => {
     setRuntimeStatus("loading");
@@ -127,6 +133,7 @@ export function WriterAgentPanel(props: WriterAgentPanelProps) {
   }, [sessionId]);
   useEffect(() => { void listUserMemories().then(setMemories).catch(() => setMemories([])); }, []);
   const startNewSession = () => {
+    invalidateTurn();
     void stopWriterAgent();
     const next = crypto.randomUUID();
     try { localStorage.setItem(`${SESSION_KEY}${props.rootPath}`, next); } catch { /* optional preference */ }
@@ -136,9 +143,11 @@ export function WriterAgentPanel(props: WriterAgentPanelProps) {
     setError("");
     setMenu(null);
   };
-  useEffect(() => () => { void stopWriterAgent(); }, []);
+  useEffect(() => () => { turnRef.current += 1; void stopWriterAgent(); }, []);
   useEffect(() => {
     if (!props.defaultRuntime || props.defaultRuntime === runtime) return;
+    invalidateTurn();
+    void stopWriterAgent();
     setRuntime(props.defaultRuntime);
     try { localStorage.setItem(RUNTIME_KEY, props.defaultRuntime); } catch { /* optional preference */ }
   }, [props.defaultRuntime]);
@@ -234,6 +243,7 @@ export function WriterAgentPanel(props: WriterAgentPanelProps) {
 
   const chooseRuntime = (value: AgentRuntimeId) => {
     if (value === runtime) { setMenu(null); return; }
+    invalidateTurn();
     void stopWriterAgent();
     setRuntime(value);
     const nextAccess = props.agentAccess?.[value] || "direct";
@@ -260,6 +270,9 @@ export function WriterAgentPanel(props: WriterAgentPanelProps) {
     const prompt = submittedPrompt.trim();
     const isRememberCommand = prompt.startsWith("/remember ");
     if (!prompt || busy || (!isRememberCommand && !runtimeReady) || (!isRememberCommand && accessMode === "thirdparty" && !thirdPartyConfigured)) return;
+    const turn = ++turnRef.current;
+    // Stopping the native runtime cannot cancel a pending save or IPC response.
+    const isCurrentTurn = () => turnRef.current === turn;
     if (options.clearDraft !== false) setDraft("");
     setBusy(true); setActivity(options.activity || "reply"); setError("");
     setMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", content: prompt }]);
@@ -268,11 +281,13 @@ export function WriterAgentPanel(props: WriterAgentPanelProps) {
         const content = prompt.slice("/remember ".length).trim();
         if (!content) throw new Error("请在 /remember 后填写要记住的内容");
         await saveUserMemory({ memoryType: "feedback", title: "用户偏好", content, source: "explicit" });
+        if (!isCurrentTurn()) return;
         setMemories((current) => [{ id: crypto.randomUUID(), memoryType: "feedback", title: "用户偏好", content, confidence: 1, updatedAt: Date.now() }, ...current]);
         setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", content: "已保存到长期记忆。", changes: [] }]);
         return;
       }
       await props.onSaveAll();
+      if (!isCurrentTurn()) return;
       // Let the selected model determine when compaction is needed. The
       // project context is already bounded by the same window; history gets
       // only the remaining budget after the current request overhead.
@@ -304,16 +319,20 @@ export function WriterAgentPanel(props: WriterAgentPanelProps) {
         skill: options.skill,
         prompt: instruction,
       });
+      if (!isCurrentTurn()) return;
       void saveAgentMessage(sessionId, "user", prompt);
       void saveAgentMessage(sessionId, "assistant", reply.message);
       if (isDreamCommand && reply.message.trim()) {
         await saveUserMemory({ memoryType: "profile", title: "长期用户画像", content: reply.message, source: "dream" });
+        if (!isCurrentTurn()) return;
         setMemories((current) => [{ id: crypto.randomUUID(), memoryType: "profile", title: "长期用户画像", content: reply.message, confidence: 1, updatedAt: Date.now() }, ...current]);
       }
       setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", content: reply.message, changes: reply.changes }]);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : String(nextError));
-    } finally { setActivity("reply"); setBusy(false); }
+      if (isCurrentTurn()) setError(nextError instanceof Error ? nextError.message : String(nextError));
+    } finally {
+      if (isCurrentTurn()) { setActivity("reply"); setBusy(false); }
+    }
   };
 
   const runPaperCheckSkill = () => {

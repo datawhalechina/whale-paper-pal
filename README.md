@@ -178,11 +178,14 @@ npm run check:repository
 npm run build
 npm run verify:structured-json
 npm run verify:quiz
+npm run verify:writer-agent-session
 npm run verify:pdf-export
 cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
+
+`verify:writer-agent-session` 在 React StrictMode / jsdom 中挂载实际 Agent 面板，验证新建会话、切换 Runtime 和退出后的旧请求处理；仅替换原生 IPC 返回，不启动模型服务或本地 Agent 进程。
 
 如需检查依赖安全公告，可以额外运行：
 
