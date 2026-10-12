@@ -58,7 +58,8 @@ import {
   restoreWriterVersion,
   saveWriterRevision,
 } from "./services/local-writer";
-import type { EditorBuffer, LatexEngine, LatexRuntimeStatus, RuntimeInstallProgress, WriterProject, WriterRevision } from "./types";
+import type { LatexEngine, LatexRuntimeStatus, RuntimeInstallProgress, WriterProject, WriterRevision } from "./types";
+import { useWriterBuffers } from "./useWriterBuffers";
 import { WriterReviewSidebar, type WriterSourceSelection } from "./WriterReviewSidebar";
 import { CodeLatexToolbar } from "./CodeLatexToolbar";
 import { VisualLatexEditor } from "./VisualLatexEditor";
@@ -174,7 +175,6 @@ function isAuxiliaryMainFile(path: string): boolean {
 export function WritingWorkspace({ rootPath, initialFile, aiSettings, onClose, onOpenFile, onOpenProject, onOpenSettings }: WritingWorkspaceProps) {
   const [project, setProject] = useState<WriterProject | null>(null);
   const [runtime, setRuntime] = useState<LatexRuntimeStatus>(EMPTY_RUNTIME);
-  const [buffers, setBuffers] = useState<Record<string, EditorBuffer>>({});
   const [tabs, setTabs] = useState<string[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [mainFile, setMainFile] = useState("");
@@ -193,6 +193,12 @@ export function WritingWorkspace({ rootPath, initialFile, aiSettings, onClose, o
   const [pdfSyncError, setPdfSyncError] = useState("");
   const [pdfSyncStatus, setPdfSyncStatus] = useState<PdfSyncStatus | null>(null);
   const [error, setError] = useState("");
+  const saveFile = useCallback((path: string, content: string) => writeWriterFile(rootPath, path, content), [rootPath]);
+  const reportSaveError = useCallback((nextError: unknown) => {
+    setError(errorMessage(nextError));
+    setLogOpen(true);
+  }, []);
+  const { buffers, setBuffers, saveAll } = useWriterBuffers(saveFile, reportSaveError);
   const [installingRuntime, setInstallingRuntime] = useState(false);
   const [installProgress, setInstallProgress] = useState<RuntimeInstallProgress>(INITIAL_INSTALL_PROGRESS);
   const [installError, setInstallError] = useState("");
@@ -493,32 +499,6 @@ export function WritingWorkspace({ rootPath, initialFile, aiSettings, onClose, o
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
   }, [initialFile, rootPath]);
-
-  const saveAll = useCallback(async () => {
-    const pending = Object.entries(buffers).filter(([, buffer]) => buffer.content !== buffer.savedContent && !buffer.saving);
-    if (!pending.length) return;
-    setBuffers((current) => {
-      const next = { ...current };
-      for (const [path] of pending) next[path] = { ...next[path], saving: true };
-      return next;
-    });
-    try {
-      await Promise.all(pending.map(([path, buffer]) => writeWriterFile(rootPath, path, buffer.content)));
-      setBuffers((current) => {
-        const next = { ...current };
-        for (const [path, buffer] of pending) next[path] = { ...next[path], savedContent: buffer.content, saving: false };
-        return next;
-      });
-    } catch (nextError) {
-      setBuffers((current) => {
-        const next = { ...current };
-        for (const [path] of pending) next[path] = { ...next[path], saving: false };
-        return next;
-      });
-      setError(errorMessage(nextError));
-      throw nextError;
-    }
-  }, [buffers, rootPath]);
 
   const persistTrackedRevision = useCallback(async (filePath: string, session: { id: string; beforeContent: string; afterContent: string }) => {
     if (!project || session.beforeContent === session.afterContent) return;
@@ -988,7 +968,7 @@ export function WritingWorkspace({ rootPath, initialFile, aiSettings, onClose, o
     if (!dirty) return;
     const timer = window.setTimeout(() => void saveAll().catch(() => undefined), 700);
     return () => window.clearTimeout(timer);
-  }, [dirty, saveAll]);
+  }, [buffers, dirty, saveAll]);
 
   const compile = useCallback(async () => {
     if (!project || !mainFile || compiling) return;
