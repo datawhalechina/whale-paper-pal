@@ -178,11 +178,14 @@ npm run check:repository
 npm run build
 npm run verify:structured-json
 npm run verify:quiz
+npm run verify:writer-agent-session
 npm run verify:pdf-export
 cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
+
+`verify:writer-agent-session` mounts the actual Agent panel in React StrictMode / jsdom to check requests that finish after a session reset, Runtime switch, or unmount. Only native IPC responses are replaced; it does not start a model service or local Agent process.
 
 For dependency security advisories:
 
